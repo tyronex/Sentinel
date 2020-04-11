@@ -78,6 +78,7 @@
         <module>sentinel-dashboard</module>
 
         <module>sentinel-demo</module>
+        <module>tyrone-examples</module>
 
     </modules>
 
