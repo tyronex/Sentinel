@@ -55,6 +55,8 @@ public class FlowQps {
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
+            }finally {
+                //
             }
         }
     }
