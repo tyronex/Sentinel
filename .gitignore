@@ -3,6 +3,7 @@
 *.iml
 out
 gen
+logs/
 
 # Visual Studio Code
 .history/

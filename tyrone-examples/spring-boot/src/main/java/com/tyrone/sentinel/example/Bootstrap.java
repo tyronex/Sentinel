@@ -4,6 +4,8 @@
  */
 package com.tyrone.sentinel.example;
 
+import com.alibaba.csp.sentinel.init.InitExecutor;
+import com.tyrone.sentinel.example.config.SentinelInitialized;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -17,12 +19,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class Bootstrap implements ApplicationRunner {
 
     public static void main(String[] args) {
+        SentinelInitialized.loadSystemProperties();
+        new Thread(() -> InitExecutor.doInit()).start();
         SpringApplication.run(Bootstrap.class, args);
     }
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-
         //
 //        System.out.println("发送nacos配置");
         final String remoteAddress = "114.55.34.166";
