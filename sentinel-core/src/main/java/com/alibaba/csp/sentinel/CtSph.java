@@ -15,22 +15,17 @@
  */
 package com.alibaba.csp.sentinel;
 
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
-
-import com.alibaba.csp.sentinel.log.RecordLog;
 import com.alibaba.csp.sentinel.context.Context;
 import com.alibaba.csp.sentinel.context.ContextUtil;
 import com.alibaba.csp.sentinel.context.NullContext;
-import com.alibaba.csp.sentinel.slotchain.MethodResourceWrapper;
-import com.alibaba.csp.sentinel.slotchain.ProcessorSlot;
-import com.alibaba.csp.sentinel.slotchain.ProcessorSlotChain;
-import com.alibaba.csp.sentinel.slotchain.ResourceWrapper;
-import com.alibaba.csp.sentinel.slotchain.SlotChainProvider;
-import com.alibaba.csp.sentinel.slotchain.StringResourceWrapper;
+import com.alibaba.csp.sentinel.log.RecordLog;
+import com.alibaba.csp.sentinel.slotchain.*;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.slots.block.Rule;
+
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * {@inheritDoc}
@@ -49,7 +44,7 @@ public class CtSph implements Sph {
      * {@link ProcessorSlotChain}, no matter in which {@link Context}.
      */
     private static volatile Map<ResourceWrapper, ProcessorSlotChain> chainMap
-        = new HashMap<ResourceWrapper, ProcessorSlotChain>();
+            = new HashMap<ResourceWrapper, ProcessorSlotChain>();
 
     private static final Object LOCK = new Object();
 
@@ -110,12 +105,26 @@ public class CtSph implements Sph {
     }
 
     private AsyncEntry asyncEntryInternal(ResourceWrapper resourceWrapper, int count, Object... args)
-        throws BlockException {
+            throws BlockException {
         return asyncEntryWithPriorityInternal(resourceWrapper, count, false, args);
     }
 
+    /**
+     * 核心方法：
+     * 如果context为null则创建一个新的
+     * 通过责任链方式创建功能插槽
+     * 调用责任链插槽
+     *
+     * @param resourceWrapper
+     * @param count
+     * @param prioritized
+     * @param args
+     * @return
+     * @throws BlockException
+     */
     private Entry entryWithPriority(ResourceWrapper resourceWrapper, int count, boolean prioritized, Object... args)
-        throws BlockException {
+            throws BlockException {
+        // ContextUtil初始化， 获取当前线程的上下文
         Context context = ContextUtil.getContext();
         if (context instanceof NullContext) {
             // The {@link NullContext} indicates that the amount of context has exceeded the threshold,
@@ -123,6 +132,7 @@ public class CtSph implements Sph {
             return new CtEntry(resourceWrapper, null, context);
         }
 
+        //创建默认上下文
         if (context == null) {
             // Using default context.
             context = InternalContextUtil.internalEnter(Constants.CONTEXT_DEFAULT_NAME);
@@ -133,6 +143,8 @@ public class CtSph implements Sph {
             return new CtEntry(resourceWrapper, null, context);
         }
 
+        //加载功能插槽,默认8个，SPI src\main\resources\META-INF\services\com.alibaba.csp.sentinel.slotchain.ProcessorSlot
+        //如果超过了插槽的最大数量，那么会返回null
         ProcessorSlot<Object> chain = lookProcessChain(resourceWrapper);
 
         /*
@@ -145,6 +157,7 @@ public class CtSph implements Sph {
 
         Entry e = new CtEntry(resourceWrapper, chain, context);
         try {
+            //调用链
             chain.entry(context, resourceWrapper, null, count, prioritized, args);
         } catch (BlockException e1) {
             e.exit(count, args);
@@ -204,7 +217,7 @@ public class CtSph implements Sph {
 
                     chain = SlotChainProvider.newSlotChain();
                     Map<ResourceWrapper, ProcessorSlotChain> newMap = new HashMap<ResourceWrapper, ProcessorSlotChain>(
-                        chainMap.size() + 1);
+                            chainMap.size() + 1);
                     newMap.putAll(chainMap);
                     newMap.put(resourceWrapper, chain);
                     chainMap = newMap;
@@ -329,14 +342,14 @@ public class CtSph implements Sph {
 
     @Override
     public Entry entryWithPriority(String name, EntryType type, int count, boolean prioritized, Object... args)
-        throws BlockException {
+            throws BlockException {
         StringResourceWrapper resource = new StringResourceWrapper(name, type);
         return entryWithPriority(resource, count, prioritized, args);
     }
 
     @Override
     public Entry entryWithType(String name, int resourceType, EntryType entryType, int count, Object[] args)
-        throws BlockException {
+            throws BlockException {
         return entryWithType(name, resourceType, entryType, count, false, args);
     }
 

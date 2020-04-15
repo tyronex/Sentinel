@@ -45,14 +45,23 @@ public class DynamicSentinelProperty<T> implements SentinelProperty<T> {
         listeners.remove(listener);
     }
 
+    /**
+     * 更新限流规则
+     * 校验是否已经存在相同的规则，如果不存在那么就直接设置value等于新的规则，然后通知所有的监听器更新一下规则配置
+     *
+     * @param newValue the new value.
+     * @return bool
+     */
     @Override
     public boolean updateValue(T newValue) {
+        //判断新旧元素是否相等
         if (isEqual(value, newValue)) {
             return false;
         }
         RecordLog.info("[DynamicSentinelProperty] Config will be updated to: " + newValue);
 
-       value = newValue;
+        value = newValue;
+        //通知所有的监听器更新一下规则配置
         for (PropertyListener<T> listener : listeners) {
             listener.configUpdate(newValue);
         }

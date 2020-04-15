@@ -40,6 +40,14 @@ import java.util.concurrent.TimeUnit;
  * <li>no specified caller</li>
  * </ol>
  * </p>
+ * 初始化FlowRuleManager的时候做了什么：
+ * FlowRuleManager在初始化的时候会调用静态代码块进行初始化
+ * 在静态代码块内调用ScheduledExecutorService线程池，每隔1秒调用一次MetricTimerListener的run方法
+ * MetricTimerListener会调用Constants.ENTRY_NODE.metrics()进行定时的统计
+ * 调用StatisticNode进行统计，统计60秒内的数据，并将60秒的数据分割成60个小窗口
+ * 在设置当前窗口的时候如果里面没有数据直接设置，如果存在数据并且是最新的直接返回，如果是旧数据，那么reset原来的统计数据
+ * 每个小窗口里面的数据由MetricBucket进行封装
+ * 最后将统计好的数据通过metricWriter写入到log里去
  *
  * @author jialiang.linjl
  * @author Eric Zhao
@@ -104,6 +112,7 @@ public class FlowRuleManager {
     }
 
     /**
+     * 加载规则
      * Load {@link FlowRule}s, former rules will be replaced.
      *
      * @param rules new rules to load.
@@ -142,6 +151,7 @@ public class FlowRuleManager {
 
         @Override
         public void configUpdate(List<FlowRule> value) {
+            //将所有的规则按resource分类，然后排序返回成map
             Map<String, List<FlowRule>> rules = FlowRuleUtil.buildFlowRuleMap(value);
             if (rules != null) {
                 flowRules.clear();

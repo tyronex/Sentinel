@@ -60,6 +60,8 @@ public class MetricTimerListener implements Runnable {
                 try {
                     //写入日志文件
                     metricWriter.write(entry.getKey(), entry.getValue());
+                    System.out.println("entry-key = " + entry.getKey());
+                    System.out.println("entry-value = " + entry.getValue());
                 } catch (Exception e) {
                     RecordLog.warn("[MetricTimerListener] Write metric error", e);
                 }

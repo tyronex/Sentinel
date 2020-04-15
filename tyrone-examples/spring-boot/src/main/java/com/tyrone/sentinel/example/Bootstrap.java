@@ -4,7 +4,6 @@
  */
 package com.tyrone.sentinel.example;
 
-import com.alibaba.csp.sentinel.init.InitExecutor;
 import com.tyrone.sentinel.example.config.SentinelInitialized;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -20,7 +19,7 @@ public class Bootstrap implements ApplicationRunner {
 
     public static void main(String[] args) {
         SentinelInitialized.loadSystemProperties();
-        new Thread(() -> InitExecutor.doInit()).start();
+//        new Thread(() -> InitExecutor.doInit()).start();
         SpringApplication.run(Bootstrap.class, args);
     }
 

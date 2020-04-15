@@ -12,11 +12,16 @@ import com.alibaba.csp.sentinel.slots.statistic.StatisticSlotCallbackRegistry;
  * @since 1.6.1
  */
 public class MetricCallbackInit implements InitFunc {
+    /**
+     * 添加回调函数
+     *
+     * @throws Exception ex
+     */
     @Override
     public void init() throws Exception {
         StatisticSlotCallbackRegistry.addEntryCallback(MetricEntryCallback.class.getCanonicalName(),
-            new MetricEntryCallback());
+                new MetricEntryCallback());
         StatisticSlotCallbackRegistry.addExitCallback(MetricExitCallback.class.getCanonicalName(),
-            new MetricExitCallback());
+                new MetricExitCallback());
     }
 }

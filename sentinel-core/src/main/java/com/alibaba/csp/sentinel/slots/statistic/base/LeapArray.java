@@ -95,12 +95,29 @@ public abstract class LeapArray<T> {
      */
     protected abstract WindowWrap<T> resetWindowTo(WindowWrap<T> windowWrap, long startTime);
 
+    /**
+     * 用当前的时间戳除以每个窗口的大小，再和array数据取模。
+     * array数据是一个容量为60的数组，代表被统计的60秒分割的60个小窗口。
+     * 例如当前timeMillis = 1567175708975
+     * timeId = 1567175708975/1000 = 1567175708
+     * timeId % array.length() = 1567175708%60 = 8
+     * 也就是说当前的时间窗口是第八个
+     *
+     * @param timeMillis long time
+     * @return index
+     */
     private int calculateTimeIdx(/*@Valid*/ long timeMillis) {
         long timeId = timeMillis / windowLengthInMs;
         // Calculate current index so we can map the timestamp to the leap array.
         return (int) (timeId % array.length());
     }
 
+    /**
+     * 计算当前时间开始时间
+     *
+     * @param timeMillis long time
+     * @return long time
+     */
     protected long calculateWindowStart(/*@Valid*/ long timeMillis) {
         return timeMillis - timeMillis % windowLengthInMs;
     }
@@ -122,6 +139,10 @@ public abstract class LeapArray<T> {
         long windowStart = calculateWindowStart(timeMillis);
 
         /*
+         * 从array里获取bucket节点
+         * 如果节点已经存在，那么用CAS更新一个新的节点
+         * 如果节点是新的，那么直接返回
+         * 如果节点失效了，设置当前节点，清除所有失效节点
          * Get bucket item at given time from the array.
          *
          * (1) Bucket is absent, then just create a new bucket and CAS update to circular array.
@@ -290,6 +311,8 @@ public abstract class LeapArray<T> {
 
         for (int i = 0; i < size; i++) {
             WindowWrap<T> windowWrap = array.get(i);
+            //如果windowWrap节点为空或者当前时间戳比windowWrap的窗口开始时间大超过60s，那么就跳过
+            //也就是说只要60s以内的数据
             if (windowWrap == null || isWindowDeprecated(validTime, windowWrap)) {
                 continue;
             }

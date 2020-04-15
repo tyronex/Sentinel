@@ -15,16 +15,6 @@
  */
 package com.alibaba.csp.sentinel.slots.block.flow;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.alibaba.csp.sentinel.log.RecordLog;
 import com.alibaba.csp.sentinel.slots.block.ClusterRuleConstant;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
@@ -35,6 +25,10 @@ import com.alibaba.csp.sentinel.slots.block.flow.controller.WarmUpRateLimiterCon
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.util.function.Function;
 import com.alibaba.csp.sentinel.util.function.Predicate;
+
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Eric Zhao
@@ -55,8 +49,8 @@ public final class FlowRuleUtil {
     /**
      * Build the flow rule map from raw list of flow rules, grouping by resource name.
      *
-     * @param list          raw list of flow rules
-     * @param filter        rule filter
+     * @param list   raw list of flow rules
+     * @param filter rule filter
      * @return constructed new flow rule map; empty map if list is null or empty, or no wanted rules
      */
     public static Map<String, List<FlowRule>> buildFlowRuleMap(List<FlowRule> list, Predicate<FlowRule> filter) {
@@ -66,9 +60,9 @@ public final class FlowRuleUtil {
     /**
      * Build the flow rule map from raw list of flow rules, grouping by resource name.
      *
-     * @param list          raw list of flow rules
-     * @param filter        rule filter
-     * @param shouldSort    whether the rules should be sorted
+     * @param list       raw list of flow rules
+     * @param filter     rule filter
+     * @param shouldSort whether the rules should be sorted
      * @return constructed new flow rule map; empty map if list is null or empty, or no wanted rules
      */
     public static Map<String, List<FlowRule>> buildFlowRuleMap(List<FlowRule> list, Predicate<FlowRule> filter,
@@ -106,6 +100,7 @@ public final class FlowRuleUtil {
                 rule.setLimitApp(RuleConstant.LIMIT_APP_DEFAULT);
             }
 
+            //拒绝策略，默认直接拒绝，包括直接拒绝、冷启动、匀速排队
             TrafficShapingController rater = generateRater(rule);
             rule.setRater(rater);
 
@@ -113,6 +108,7 @@ public final class FlowRuleUtil {
             if (key == null) {
                 continue;
             }
+            //按resource name分组
             Set<FlowRule> flowRules = tmpMap.get(key);
 
             if (flowRules == null) {
@@ -123,6 +119,7 @@ public final class FlowRuleUtil {
 
             flowRules.add(rule);
         }
+        //根据ClusterMode LimitApp排序
         Comparator<FlowRule> comparator = new FlowRuleComparator();
         for (Entry<K, Set<FlowRule>> entries : tmpMap.entrySet()) {
             List<FlowRule> rules = new ArrayList<>(entries.getValue());
@@ -141,12 +138,12 @@ public final class FlowRuleUtil {
             switch (rule.getControlBehavior()) {
                 case RuleConstant.CONTROL_BEHAVIOR_WARM_UP:
                     return new WarmUpController(rule.getCount(), rule.getWarmUpPeriodSec(),
-                        ColdFactorProperty.coldFactor);
+                            ColdFactorProperty.coldFactor);
                 case RuleConstant.CONTROL_BEHAVIOR_RATE_LIMITER:
                     return new RateLimiterController(rule.getMaxQueueingTimeMs(), rule.getCount());
                 case RuleConstant.CONTROL_BEHAVIOR_WARM_UP_RATE_LIMITER:
                     return new WarmUpRateLimiterController(rule.getCount(), rule.getWarmUpPeriodSec(),
-                        rule.getMaxQueueingTimeMs(), ColdFactorProperty.coldFactor);
+                            rule.getMaxQueueingTimeMs(), ColdFactorProperty.coldFactor);
                 case RuleConstant.CONTROL_BEHAVIOR_DEFAULT:
                 default:
                     // Default mode or unknown mode: default traffic shaping controller (fast-reject).
@@ -167,13 +164,14 @@ public final class FlowRuleUtil {
 
     /**
      * Check whether provided flow rule is valid.
+     * 校验必要字段：资源名，限流阈值， 限流阈值类型，调用关系限流策略，流量控制效果等
      *
      * @param rule flow rule to check
      * @return true if valid, otherwise false
      */
     public static boolean isValidRule(FlowRule rule) {
         boolean baseValid = rule != null && !StringUtil.isBlank(rule.getResource()) && rule.getCount() >= 0
-            && rule.getGrade() >= 0 && rule.getStrategy() >= 0 && rule.getControlBehavior() >= 0;
+                && rule.getGrade() >= 0 && rule.getStrategy() >= 0 && rule.getControlBehavior() >= 0;
         if (!baseValid) {
             return false;
         }
@@ -234,5 +232,6 @@ public final class FlowRuleUtil {
         }
     };
 
-    private FlowRuleUtil() {}
+    private FlowRuleUtil() {
+    }
 }

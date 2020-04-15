@@ -15,13 +15,13 @@
  */
 package com.alibaba.csp.sentinel.init;
 
+import com.alibaba.csp.sentinel.log.RecordLog;
+import com.alibaba.csp.sentinel.spi.ServiceLoaderUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import com.alibaba.csp.sentinel.log.RecordLog;
-import com.alibaba.csp.sentinel.spi.ServiceLoaderUtil;
 
 /**
  * Load registered init functions and execute in order.
@@ -35,24 +35,30 @@ public final class InitExecutor {
     /**
      * If one {@link InitFunc} throws an exception, the init process
      * will immediately be interrupted and the application will exit.
-     *
+     * 只会初始化一次，并且初始化失败会退出
      * The initialization will be executed only once.
      */
     public static void doInit() {
+        //
         if (!initialized.compareAndSet(false, true)) {
             return;
         }
         try {
+            //通过spi加载InitFunc子类，默认是MetricCallbackInit
+            //路径：src\main\resources\META-INF\services\com.alibaba.csp.sentinel.init.InitFunc
             ServiceLoader<InitFunc> loader = ServiceLoaderUtil.getServiceLoader(InitFunc.class);
+
             List<OrderWrapper> initList = new ArrayList<OrderWrapper>();
+            //然后会将MetricCallbackInit封装成OrderWrapper实例
             for (InitFunc initFunc : loader) {
                 RecordLog.info("[InitExecutor] Found init func: " + initFunc.getClass().getCanonicalName());
                 insertSorted(initList, initFunc);
             }
+            //遍历，调用MetricCallbackInit的init方法
             for (OrderWrapper w : initList) {
                 w.func.init();
                 RecordLog.info(String.format("[InitExecutor] Executing %s with order %d",
-                    w.func.getClass().getCanonicalName(), w.order));
+                        w.func.getClass().getCanonicalName(), w.order));
             }
         } catch (Exception ex) {
             RecordLog.warn("[InitExecutor] WARN: Initialization failed", ex);
@@ -82,7 +88,8 @@ public final class InitExecutor {
         }
     }
 
-    private InitExecutor() {}
+    private InitExecutor() {
+    }
 
     private static class OrderWrapper {
         private final int order;
