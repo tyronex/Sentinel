@@ -94,9 +94,11 @@ public class StatisticNode implements Node {
      * by given {@code sampleCount}.
      */
     private transient volatile Metric rollingCounterInSecond = new ArrayMetric(SampleCountProperty.SAMPLE_COUNT,
-        IntervalProperty.INTERVAL);
+            IntervalProperty.INTERVAL);
 
     /**
+     * 构建一个统计60s的数据，设置60个滑动窗口，每个窗口1s
+     * 这里创建的是BucketLeapArray实例来进行统计
      * Holds statistics of the recent 60 seconds. The windowLengthInMs is deliberately set to 1000 milliseconds,
      * meaning each bucket per second, in this way we can get accurate statistics of each second.
      */
@@ -108,25 +110,37 @@ public class StatisticNode implements Node {
     private LongAdder curThreadNum = new LongAdder();
 
     /**
+     * 上次统计的时间戳
      * The last timestamp when metrics were fetched.
      */
     private long lastFetchTime = -1;
 
+    /**
+     * 统计数据
+     *
+     * @return map
+     */
     @Override
     public Map<Long, MetricNode> metrics() {
         // The fetch operation is thread-safe under a single-thread scheduler pool.
         long currentTime = TimeUtil.currentTimeMillis();
+        //获取当前时间的滑动窗口的开始时间
         currentTime = currentTime - currentTime % 1000;
         Map<Long, MetricNode> metrics = new ConcurrentHashMap<>();
+        //获取滑动窗口里统计的数据
         List<MetricNode> nodesOfEverySecond = rollingCounterInMinute.details();
+
         long newLastFetchTime = lastFetchTime;
         // Iterate metrics of all resources, filter valid metrics (not-empty and up-to-date).
         for (MetricNode node : nodesOfEverySecond) {
+            //筛选符合条件的统计节点
             if (isNodeInTime(node, currentTime) && isValidMetricNode(node)) {
                 metrics.put(node.getTimestamp(), node);
+                //选出统计节点最大时间戳
                 newLastFetchTime = Math.max(newLastFetchTime, node.getTimestamp());
             }
         }
+        //更新上次统计的时间戳
         lastFetchTime = newLastFetchTime;
 
         return metrics;
@@ -143,7 +157,7 @@ public class StatisticNode implements Node {
 
     private boolean isValidMetricNode(MetricNode node) {
         return node.getPassQps() > 0 || node.getBlockQps() > 0 || node.getSuccessQps() > 0
-            || node.getExceptionQps() > 0 || node.getRt() > 0 || node.getOccupiedPassQps() > 0;
+                || node.getExceptionQps() > 0 || node.getRt() > 0 || node.getOccupiedPassQps() > 0;
     }
 
     @Override
@@ -239,7 +253,7 @@ public class StatisticNode implements Node {
 
     @Override
     public int curThreadNum() {
-        return (int)curThreadNum.sum();
+        return (int) curThreadNum.sum();
     }
 
     @Override

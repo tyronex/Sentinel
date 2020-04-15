@@ -15,17 +15,17 @@
  */
 package com.alibaba.csp.sentinel.slots.statistic.metric;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.alibaba.csp.sentinel.config.SentinelConfig;
 import com.alibaba.csp.sentinel.node.metric.MetricNode;
 import com.alibaba.csp.sentinel.slots.statistic.MetricEvent;
 import com.alibaba.csp.sentinel.slots.statistic.base.LeapArray;
-import com.alibaba.csp.sentinel.slots.statistic.data.MetricBucket;
 import com.alibaba.csp.sentinel.slots.statistic.base.WindowWrap;
+import com.alibaba.csp.sentinel.slots.statistic.data.MetricBucket;
 import com.alibaba.csp.sentinel.slots.statistic.metric.occupy.OccupiableBucketLeapArray;
 import com.alibaba.csp.sentinel.util.function.Predicate;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The basic metric class in Sentinel using a {@link BucketLeapArray} internal.
@@ -155,13 +155,15 @@ public class ArrayMetric implements Metric {
     @Override
     public List<MetricNode> details() {
         List<MetricNode> details = new ArrayList<>();
+        //设置当前时间窗口到窗口列表
         data.currentWindow();
+        //列出窗口数据
         List<WindowWrap<MetricBucket>> list = data.list();
         for (WindowWrap<MetricBucket> window : list) {
             if (window == null) {
                 continue;
             }
-
+            //将不为空的窗口数据组装MetricNode
             details.add(fromBucket(window));
         }
 

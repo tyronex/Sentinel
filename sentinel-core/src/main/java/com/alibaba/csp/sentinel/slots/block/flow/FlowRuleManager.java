@@ -15,6 +15,15 @@
  */
 package com.alibaba.csp.sentinel.slots.block.flow;
 
+import com.alibaba.csp.sentinel.concurrent.NamedThreadFactory;
+import com.alibaba.csp.sentinel.log.RecordLog;
+import com.alibaba.csp.sentinel.node.metric.MetricTimerListener;
+import com.alibaba.csp.sentinel.property.DynamicSentinelProperty;
+import com.alibaba.csp.sentinel.property.PropertyListener;
+import com.alibaba.csp.sentinel.property.SentinelProperty;
+import com.alibaba.csp.sentinel.util.AssertUtil;
+import com.alibaba.csp.sentinel.util.StringUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,15 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import com.alibaba.csp.sentinel.concurrent.NamedThreadFactory;
-import com.alibaba.csp.sentinel.log.RecordLog;
-import com.alibaba.csp.sentinel.util.AssertUtil;
-import com.alibaba.csp.sentinel.util.StringUtil;
-import com.alibaba.csp.sentinel.node.metric.MetricTimerListener;
-import com.alibaba.csp.sentinel.property.DynamicSentinelProperty;
-import com.alibaba.csp.sentinel.property.PropertyListener;
-import com.alibaba.csp.sentinel.property.SentinelProperty;
 
 /**
  * <p>
@@ -46,17 +46,31 @@ import com.alibaba.csp.sentinel.property.SentinelProperty;
  */
 public class FlowRuleManager {
 
+    /**
+     * 规则信息
+     */
     private static final Map<String, List<FlowRule>> flowRules = new ConcurrentHashMap<String, List<FlowRule>>();
 
+    /**
+     * 监听器
+     */
     private static final FlowPropertyListener LISTENER = new FlowPropertyListener();
+    /**
+     * 监听配置是否发生变化
+     */
     private static SentinelProperty<List<FlowRule>> currentProperty = new DynamicSentinelProperty<List<FlowRule>>();
 
+    /**
+     * 延迟线程池
+     */
     @SuppressWarnings("PMD.ThreadPoolCreationRule")
     private static final ScheduledExecutorService SCHEDULER = Executors.newScheduledThreadPool(1,
-        new NamedThreadFactory("sentinel-metrics-record-task", true));
+            new NamedThreadFactory("sentinel-metrics-record-task", true));
 
     static {
+        //初始化FlowPropertyListener
         currentProperty.addListener(LISTENER);
+        //添加MetricTimer定时任务线程，每秒调用MetricTimerListener的run方法
         SCHEDULER.scheduleAtFixedRate(new MetricTimerListener(), 0, 1, TimeUnit.SECONDS);
     }
 

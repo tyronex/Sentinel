@@ -15,13 +15,13 @@
  */
 package com.alibaba.csp.sentinel.slots.statistic.base;
 
+import com.alibaba.csp.sentinel.util.AssertUtil;
+import com.alibaba.csp.sentinel.util.TimeUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReentrantLock;
-
-import com.alibaba.csp.sentinel.util.AssertUtil;
-import com.alibaba.csp.sentinel.util.TimeUtil;
 
 /**
  * <p>
@@ -98,7 +98,7 @@ public abstract class LeapArray<T> {
     private int calculateTimeIdx(/*@Valid*/ long timeMillis) {
         long timeId = timeMillis / windowLengthInMs;
         // Calculate current index so we can map the timestamp to the leap array.
-        return (int)(timeId % array.length());
+        return (int) (timeId % array.length());
     }
 
     protected long calculateWindowStart(/*@Valid*/ long timeMillis) {
@@ -116,8 +116,9 @@ public abstract class LeapArray<T> {
             return null;
         }
 
+        //根据传入时间 计算窗口索引
         int idx = calculateTimeIdx(timeMillis);
-        // Calculate current bucket start time.
+        // 计算当前窗口开始时间 Calculate current bucket start time.
         long windowStart = calculateWindowStart(timeMillis);
 
         /*
@@ -128,7 +129,9 @@ public abstract class LeapArray<T> {
          * (3) Bucket is deprecated, then reset current bucket and clean all deprecated buckets.
          */
         while (true) {
+            //获取数据
             WindowWrap<T> old = array.get(idx);
+            //创建新bucket
             if (old == null) {
                 /*
                  *     B0       B1      B2    NULL      B4
@@ -150,6 +153,7 @@ public abstract class LeapArray<T> {
                     // Contention failed, the thread will yield its time slice to wait for bucket available.
                     Thread.yield();
                 }
+                //窗口开始时间（当前时间）和获取到数据的一致，则直接返回
             } else if (windowStart == old.windowStart()) {
                 /*
                  *     B0       B1      B2     B3      B4
@@ -163,6 +167,7 @@ public abstract class LeapArray<T> {
                  * that means the time is within the bucket, so directly return the bucket.
                  */
                 return old;
+                //窗口开始时间（当前时间）大于获取到数据的开始时间，则更新到当前时间
             } else if (windowStart > old.windowStart()) {
                 /*
                  *   (old)
