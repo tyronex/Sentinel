@@ -23,6 +23,8 @@ import com.alibaba.csp.sentinel.property.PropertyListener;
 import com.alibaba.csp.sentinel.property.SentinelProperty;
 import com.alibaba.csp.sentinel.util.AssertUtil;
 import com.alibaba.csp.sentinel.util.StringUtil;
+import com.alibaba.fastjson.JSON;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +54,7 @@ import java.util.concurrent.TimeUnit;
  * @author jialiang.linjl
  * @author Eric Zhao
  */
+@Slf4j
 public class FlowRuleManager {
 
     /**
@@ -78,8 +81,10 @@ public class FlowRuleManager {
     static {
         //初始化FlowPropertyListener
         currentProperty.addListener(LISTENER);
+        log.warn("Sentinel FlowRuleManager 初始化1，初始化FlowPropertyListener:{},SentinelProperty<List<FlowRule>> currentProperty:{}", JSON.toJSONString(LISTENER), JSON.toJSONString(currentProperty));
         //添加MetricTimer定时任务线程，每秒调用MetricTimerListener的run方法
         SCHEDULER.scheduleAtFixedRate(new MetricTimerListener(), 0, 1, TimeUnit.SECONDS);
+        log.warn("Sentinel FlowRuleManager 初始化1，初始化延迟线程池 添加MetricTimer定时任务线程，每秒调用MetricTimerListener的run方法：{}", JSON.toJSONString(SCHEDULER));
     }
 
     /**

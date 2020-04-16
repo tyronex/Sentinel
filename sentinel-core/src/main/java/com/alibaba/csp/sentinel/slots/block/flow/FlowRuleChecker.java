@@ -15,14 +15,12 @@
  */
 package com.alibaba.csp.sentinel.slots.block.flow;
 
-import java.util.Collection;
-
 import com.alibaba.csp.sentinel.cluster.ClusterStateManager;
-import com.alibaba.csp.sentinel.cluster.server.EmbeddedClusterTokenServerProvider;
-import com.alibaba.csp.sentinel.cluster.client.TokenClientProvider;
-import com.alibaba.csp.sentinel.cluster.TokenResultStatus;
 import com.alibaba.csp.sentinel.cluster.TokenResult;
+import com.alibaba.csp.sentinel.cluster.TokenResultStatus;
 import com.alibaba.csp.sentinel.cluster.TokenService;
+import com.alibaba.csp.sentinel.cluster.client.TokenClientProvider;
+import com.alibaba.csp.sentinel.cluster.server.EmbeddedClusterTokenServerProvider;
 import com.alibaba.csp.sentinel.context.Context;
 import com.alibaba.csp.sentinel.log.RecordLog;
 import com.alibaba.csp.sentinel.node.DefaultNode;
@@ -33,12 +31,17 @@ import com.alibaba.csp.sentinel.slots.block.RuleConstant;
 import com.alibaba.csp.sentinel.slots.clusterbuilder.ClusterBuilderSlot;
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.util.function.Function;
+import com.alibaba.fastjson.JSON;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Collection;
 
 /**
  * Rule checker for flow control rules.
  *
  * @author Eric Zhao
  */
+@Slf4j
 public class FlowRuleChecker {
 
     public void checkFlow(Function<String, Collection<FlowRule>> ruleProvider, ResourceWrapper resource,
@@ -47,9 +50,11 @@ public class FlowRuleChecker {
             return;
         }
         Collection<FlowRule> rules = ruleProvider.apply(resource.getName());
+        log.warn("FlowRuleChecker 资源名称:{} 规则列表:{}", resource.getName(), JSON.toJSONString(rules));
         if (rules != null) {
             for (FlowRule rule : rules) {
                 if (!canPassCheck(rule, context, node, count, prioritized)) {
+                    log.warn("校验不通过，rule:{};count:{};node:{}", JSON.toJSONString(rule), count, JSON.toJSONString(node));
                     throw new FlowException(rule.getLimitApp(), rule);
                 }
             }
@@ -57,12 +62,12 @@ public class FlowRuleChecker {
     }
 
     public boolean canPassCheck(/*@NonNull*/ FlowRule rule, Context context, DefaultNode node,
-                                                    int acquireCount) {
+                                             int acquireCount) {
         return canPassCheck(rule, context, node, acquireCount, false);
     }
 
     public boolean canPassCheck(/*@NonNull*/ FlowRule rule, Context context, DefaultNode node, int acquireCount,
-                                                    boolean prioritized) {
+                                             boolean prioritized) {
         String limitApp = rule.getLimitApp();
         if (limitApp == null) {
             return true;
@@ -81,6 +86,7 @@ public class FlowRuleChecker {
         if (selectedNode == null) {
             return true;
         }
+        log.warn("FlowRuleChecker#passLocalCheck,selectedNode:{},class:{}", JSON.toJSONString(selectedNode), selectedNode.getClass().getTypeName());
 
         return rule.getRater().canPass(selectedNode, acquireCount, prioritized);
     }
@@ -133,7 +139,7 @@ public class FlowRuleChecker {
 
             return selectReferenceNode(rule, context, node);
         } else if (RuleConstant.LIMIT_APP_OTHER.equals(limitApp)
-            && FlowRuleManager.isOtherOrigin(origin, rule.getResource())) {
+                && FlowRuleManager.isOtherOrigin(origin, rule.getResource())) {
             if (strategy == RuleConstant.STRATEGY_DIRECT) {
                 return context.getOriginNode();
             }

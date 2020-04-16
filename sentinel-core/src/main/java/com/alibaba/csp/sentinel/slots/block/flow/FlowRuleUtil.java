@@ -25,6 +25,8 @@ import com.alibaba.csp.sentinel.slots.block.flow.controller.WarmUpRateLimiterCon
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.util.function.Function;
 import com.alibaba.csp.sentinel.util.function.Predicate;
+import com.alibaba.fastjson.JSON;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -34,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Eric Zhao
  * @since 1.4.0
  */
+@Slf4j
 public final class FlowRuleUtil {
 
     /**
@@ -137,11 +140,14 @@ public final class FlowRuleUtil {
         if (rule.getGrade() == RuleConstant.FLOW_GRADE_QPS) {
             switch (rule.getControlBehavior()) {
                 case RuleConstant.CONTROL_BEHAVIOR_WARM_UP:
+                    log.warn("实例化冷启动限流控制器，rule:{}", JSON.toJSONString(rule));
                     return new WarmUpController(rule.getCount(), rule.getWarmUpPeriodSec(),
                             ColdFactorProperty.coldFactor);
                 case RuleConstant.CONTROL_BEHAVIOR_RATE_LIMITER:
+                    log.warn("实例化匀速排队限流控制器，rule:{}", JSON.toJSONString(rule));
                     return new RateLimiterController(rule.getMaxQueueingTimeMs(), rule.getCount());
                 case RuleConstant.CONTROL_BEHAVIOR_WARM_UP_RATE_LIMITER:
+                    log.warn("实例化冷启动+匀速排队限流控制器，rule:{}", JSON.toJSONString(rule));
                     return new WarmUpRateLimiterController(rule.getCount(), rule.getWarmUpPeriodSec(),
                             rule.getMaxQueueingTimeMs(), ColdFactorProperty.coldFactor);
                 case RuleConstant.CONTROL_BEHAVIOR_DEFAULT:
@@ -149,6 +155,7 @@ public final class FlowRuleUtil {
                     // Default mode or unknown mode: default traffic shaping controller (fast-reject).
             }
         }
+        log.warn("实例化默认限流控制器，rule:{}", JSON.toJSONString(rule));
         return new DefaultController(rule.getCount(), rule.getGrade());
     }
 
